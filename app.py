@@ -85,6 +85,8 @@ if "praemie_aktiv" not in st.session_state:
   st.session_state["praemie_aktiv"] = False
 if "praemie_val" not in st.session_state:
   st.session_state["praemie_val"] = 3000.0
+if "jahres_km_val" not in st.session_state:
+  st.session_state["jahres_km_val"] = 15000.0
 if "zeitraum_text" not in st.session_state:
   st.session_state["zeitraum_text"] = datetime.date.today().strftime("%B %Y")
 if "thg_aktiv" not in st.session_state:
@@ -360,6 +362,14 @@ if st.session_state["praemie_aktiv"]:
       help="Staatliche oder herstellerseitige Förderungen.",
   )
 
+st.session_state["jahres_km_val"] = st.number_input(
+    "Erwartete jährliche Fahrleistung für die Zeitberechnung (km)",
+    min_value=1000.0,
+    value=st.session_state["jahres_km_val"],
+    step=1000.0,
+    help="Wird benötigt, um die Kilometer in Jahre umzurechnen.",
+)
+
 # Berechnung starten
 if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
   kwh = st.session_state["kwh_val"]
@@ -368,6 +378,7 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
   v_verb = st.session_state["verbrauch_verbrenner_val"]
   spritpreis = st.session_state["kraftstoffpreis_val"]
   zeit_label = st.session_state["zeitraum_text"]
+  jahres_km = st.session_state["jahres_km_val"]
 
   # Effektiven Kaufpreis nach Abzügen ermitteln
   brutto_kaufpreis = st.session_state["kaufpreis_ev_val"]
@@ -431,9 +442,17 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
     km_bis_amortisation = (
         effektiver_kaufpreis / ersparnis_pro_km if ersparnis_pro_km > 0 else 0
     )
+    # Jährliche Ersparnis basierend auf der angegebenen jährlichen Laufleistung ermitteln
+    jaehrliche_ersparnis_euro = ersparnis_pro_km * jahres_km
+    jahre_bis_amortisation = (
+        effektiver_kaufpreis / jaehrliche_ersparnis_euro
+        if jaehrliche_ersparnis_euro > 0
+        else 0
+    )
   else:
     ersparnis_pro_km = 0
     km_bis_amortisation = 0
+    jahre_bis_amortisation = 0
 
   # Ausgabe
   st.divider()
@@ -501,9 +520,10 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
           f"💡 Der effektive Netto-Aufpreis beträgt **{effektiver_kaufpreis:,.2f}"
           f" €** (nach Abzügen). Durch die laufenden Einsparungen ergibt sich"
           f" eine Entlastung von ca. **{ersparnis_pro_km * 100:.2f} Cent pro"
-          f" Kilometer**. Die Amortisation ist somit nach ca."
-          f" **{km_bis_amortisation:,.0f} gefahrenen Kilometern**"
-          " erreicht.".replace(",", ".")
+          f" Kilometer**. Bei einer Annahme von **{jahres_km:,.0f} km** pro"
+          f" Jahr hast du die Kosten nach ca. **{jahre_bis_amortisation:.1f}"
+          f" Jahren** (bzw. nach **{km_bis_amortisation:,.0f} gefahrenen"
+          " Kilometern**) wieder eingefahren.".replace(",", ".")
       )
   else:
     st.info(
