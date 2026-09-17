@@ -49,7 +49,7 @@ def get_live_fuel_price(fuel_type):
 
 
 # Titel & Autor
-st.title("⚡ E-Auto vs. Verbrenner & Amortisation")
+st.title("⚡ E-Auto vs. Verbrenner ")
 st.write(
     "Vergleiche deine Ladekosten flexibel und berechne, wann sich das"
     " E-Auto amortisiert."
