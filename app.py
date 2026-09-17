@@ -73,11 +73,11 @@ if "kaufpreis_ev_val" not in st.session_state:
 if "zeitraum_text" not in st.session_state:
   st.session_state["zeitraum_text"] = datetime.date.today().strftime("%B %Y")
 if "thg_aktiv" not in st.session_state:
-  st.session_state["thg_aktiv"] = True
+  st.session_state["thg_aktiv"] = False  # Standardmäßig abgewählt
 if "thg_wert" not in st.session_state:
   st.session_state["thg_wert"] = 150.0
 if "steuer_aktiv" not in st.session_state:
-  st.session_state["steuer_aktiv"] = True
+  st.session_state["steuer_aktiv"] = False  # Standardmäßig abgewählt
 if "steuer_verbrenner_wert" not in st.session_state:
   st.session_state["steuer_verbrenner_wert"] = 120.0
 
@@ -155,9 +155,7 @@ kraftstoff_art = st.radio(
     key="kraftstoff_art_radio",
 )
 
-selected_fuel_short = (
-    "Diesel" if "Diesel" in kraftstoff_art else "Benzin"
-)
+selected_fuel_short = "Diesel" if "Diesel" in kraftstoff_art else "Benzin"
 
 # 3. Kraftstoffpreis-Quellen & Sofort-Übernahme
 st.header("3. Kraftstoffpreis abrufen")
