@@ -77,6 +77,14 @@ if "kraftstoffpreis_val" not in st.session_state:
   st.session_state["kraftstoffpreis_val"] = 1.75
 if "kaufpreis_ev_val" not in st.session_state:
   st.session_state["kaufpreis_ev_val"] = 35000.0
+if "restwert_aktiv" not in st.session_state:
+  st.session_state["restwert_aktiv"] = True
+if "restwert_val" not in st.session_state:
+  st.session_state["restwert_val"] = 5000.0
+if "praemie_aktiv" not in st.session_state:
+  st.session_state["praemie_aktiv"] = False
+if "praemie_val" not in st.session_state:
+  st.session_state["praemie_val"] = 3000.0
 if "zeitraum_text" not in st.session_state:
   st.session_state["zeitraum_text"] = datetime.date.today().strftime("%B %Y")
 if "thg_aktiv" not in st.session_state:
@@ -219,7 +227,6 @@ st.session_state["strompreis_val"] = st.number_input(
     key="strompreis_input_field",
 )
 
-# NEU: PV-Strom Option
 st.session_state["pv_aktiv"] = st.checkbox(
     "Eigene PV-Anlage (Solarstrom) einbeziehen",
     value=st.session_state["pv_aktiv"],
@@ -275,8 +282,8 @@ st.session_state["verbrauch_verbrenner_val"] = st.number_input(
     key="verbrauch_verbrenner_input_field",
 )
 
-# 5. THG-Quote & Kfz-Steuer
-st.header("5. THG-Quote & Kfz-Steuer")
+# 5. THG-Quote, Kfz-Steuer & Amortisation (inkl. Restwert / Prämie)
+st.header("5. THG-Quote, Kfz-Steuer & Amortisation")
 
 st.session_state["thg_aktiv"] = st.checkbox(
     "THG-Quote einrechnen (jährliche Prämie für E-Autos)",
@@ -314,16 +321,44 @@ if st.session_state["steuer_aktiv"]:
       ),
   )
 
-st.subheader("Amortisations-Rechner")
+st.subheader("Amortisations-Berechnung (Kaufpreis & Abzüge)")
 st.session_state["kaufpreis_ev_val"] = st.number_input(
-    "E-Auto Anschaffungspreis / Nettokaufpreis (€)",
+    "E-Auto Anschaffungspreis / Bruttokaufpreis (€)",
     min_value=0.0,
     value=st.session_state["kaufpreis_ev_val"],
     step=500.0,
     format="%.2f",
-    help="Gesamtkosten oder Mehrpreis des E-Autos.",
+    help="Bruttokaufpreis des E-Autos.",
     key="kaufpreis_ev_input_field",
 )
+
+st.session_state["restwert_aktiv"] = st.checkbox(
+    "Inzahlungnahme / Restwert des alten Fahrzeugs abziehen",
+    value=st.session_state["restwert_aktiv"],
+)
+if st.session_state["restwert_aktiv"]:
+  st.session_state["restwert_val"] = st.number_input(
+      "Erlös / Restwert Altfahrzeug (€)",
+      min_value=0.0,
+      value=st.session_state["restwert_val"],
+      step=500.0,
+      format="%.2f",
+      help="Erzielter Verkaufspreis oder Inzahlungnahme-Wert des alten Autos.",
+  )
+
+st.session_state["praemie_aktiv"] = st.checkbox(
+    "E-Auto Prämie / Hersteller-Rabatt / Förderung abziehen",
+    value=st.session_state["praemie_aktiv"],
+)
+if st.session_state["praemie_aktiv"]:
+  st.session_state["praemie_val"] = st.number_input(
+      "Höhe der Prämie / Förderung (€)",
+      min_value=0.0,
+      value=st.session_state["praemie_val"],
+      step=100.0,
+      format="%.2f",
+      help="Staatliche oder herstellerseitige Förderungen.",
+  )
 
 # Berechnung starten
 if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
@@ -333,7 +368,20 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
   v_verb = st.session_state["verbrauch_verbrenner_val"]
   spritpreis = st.session_state["kraftstoffpreis_val"]
   zeit_label = st.session_state["zeitraum_text"]
-  kaufpreis_ev = st.session_state["kaufpreis_ev_val"]
+
+  # Effektiven Kaufpreis nach Abzügen ermitteln
+  brutto_kaufpreis = st.session_state["kaufpreis_ev_val"]
+  abzug_restwert = (
+      st.session_state["restwert_val"]
+      if st.session_state["restwert_aktiv"]
+      else 0.0
+  )
+  abzug_praemie = (
+      st.session_state["praemie_val"]
+      if st.session_state["praemie_aktiv"]
+      else 0.0
+  )
+  effektiver_kaufpreis = max(0.0, brutto_kaufpreis - abzug_restwert - abzug_praemie)
 
   # 1. Gefahrene Kilometer ermitteln
   if v_ev > 0:
@@ -377,10 +425,12 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
   else:
     ersparnis_prozent = 0
 
-  # 5. Amortisation berechnen
+  # 5. Amortisation basierend auf effektivem Kaufpreis berechnen
   if gefahrene_km > 0 and ersparnis_euro > 0:
     ersparnis_pro_km = ersparnis_euro / gefahrene_km
-    km_bis_amortisation = kaufpreis_ev / ersparnis_pro_km
+    km_bis_amortisation = (
+        effektiver_kaufpreis / ersparnis_pro_km if ersparnis_pro_km > 0 else 0
+    )
   else:
     ersparnis_pro_km = 0
     km_bis_amortisation = 0
@@ -445,14 +495,15 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
         " €** profitiert!".replace(",", ".")
     )
 
-    if kaufpreis_ev > 0 and ersparnis_pro_km > 0:
+    if effektiver_kaufpreis > 0 and ersparnis_pro_km > 0:
       st.markdown("### 📈 Amortisations-Analyse:")
       st.info(
-          f"💡 Durch die Einbeziehung von Fixkosten (Steuer/THG) ergibt sich"
-          f" eine effektive Entlastung von ca. **{ersparnis_pro_km * 100:.2f}"
-          f" Cent pro Kilometer**. Der Anschaffungspreis von **{kaufpreis_ev:,.2f}"
-          f" €** amortisiert sich damit nach ca. **{km_bis_amortisation:,.0f}"
-          " gefahrenen Kilometern**.".replace(",", ".")
+          f"💡 Der effektive Netto-Aufpreis beträgt **{effektiver_kaufpreis:,.2f}"
+          f" €** (nach Abzügen). Durch die laufenden Einsparungen ergibt sich"
+          f" eine Entlastung von ca. **{ersparnis_pro_km * 100:.2f} Cent pro"
+          f" Kilometer**. Die Amortisation ist somit nach ca."
+          f" **{km_bis_amortisation:,.0f} gefahrenen Kilometern**"
+          " erreicht.".replace(",", ".")
       )
   else:
     st.info(
