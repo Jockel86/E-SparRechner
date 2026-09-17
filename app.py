@@ -54,7 +54,7 @@ st.write(
     "Vergleiche deine Ladekosten flexibel und berechne, wann sich das"
     " E-Auto amortisiert."
 )
-st.caption("🛠️ Entwickelt von Jochen Vortkamp")
+st.caption("Entwickelt von J.Vortkamp")
 
 # ==========================================
 # SESSION STATE INITIALISIERUNG
