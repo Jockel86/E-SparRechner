@@ -54,7 +54,7 @@ st.write(
     "Vergleiche deine Ladekosten flexibel und berechne, wann sich das"
     " E-Auto amortisiert."
 )
-st.caption("Entwickelt von J.Vortkamp")
+st.caption("Entwickelt von Jochen Vortkamp")
 
 # ==========================================
 # SESSION STATE INITIALISIERUNG
@@ -63,6 +63,12 @@ if "kwh_val" not in st.session_state:
   st.session_state["kwh_val"] = 250.0
 if "strompreis_val" not in st.session_state:
   st.session_state["strompreis_val"] = 0.30
+if "pv_aktiv" not in st.session_state:
+  st.session_state["pv_aktiv"] = True
+if "pv_anteil_val" not in st.session_state:
+  st.session_state["pv_anteil_val"] = 50.0
+if "pv_preis_val" not in st.session_state:
+  st.session_state["pv_preis_val"] = 0.08
 if "verbrauch_ev_val" not in st.session_state:
   st.session_state["verbrauch_ev_val"] = 18.0
 if "verbrauch_verbrenner_val" not in st.session_state:
@@ -74,11 +80,11 @@ if "kaufpreis_ev_val" not in st.session_state:
 if "zeitraum_text" not in st.session_state:
   st.session_state["zeitraum_text"] = datetime.date.today().strftime("%B %Y")
 if "thg_aktiv" not in st.session_state:
-  st.session_state["thg_aktiv"] = False  # Standardmäßig abgewählt
+  st.session_state["thg_aktiv"] = False
 if "thg_wert" not in st.session_state:
   st.session_state["thg_wert"] = 150.0
 if "steuer_aktiv" not in st.session_state:
-  st.session_state["steuer_aktiv"] = False  # Standardmäßig abgewählt
+  st.session_state["steuer_aktiv"] = False
 if "steuer_verbrenner_wert" not in st.session_state:
   st.session_state["steuer_verbrenner_wert"] = 120.0
 
@@ -204,14 +210,46 @@ st.number_input(
 st.header("4. Tarife, Verbrauch & Kaufpreis")
 
 st.session_state["strompreis_val"] = st.number_input(
-    "Ø Strompreis (€/kWh)",
+    "Ø Netz-Strompreis (€/kWh)",
     min_value=0.0,
     value=st.session_state["strompreis_val"],
     step=0.01,
     format="%.3f",
-    help="Dein durchschnittlicher Strompreis.",
+    help="Dein durchschnittlicher Strompreis aus dem Netz.",
     key="strompreis_input_field",
 )
+
+# NEU: PV-Strom Option
+st.session_state["pv_aktiv"] = st.checkbox(
+    "Eigene PV-Anlage (Solarstrom) einbeziehen",
+    value=st.session_state["pv_aktiv"],
+    help="Berücksichtige einen prozentualen Anteil an günstigem PV-Strom.",
+)
+
+if st.session_state["pv_aktiv"]:
+  col_pv1, col_pv2 = st.columns(2)
+  with col_pv1:
+    st.session_state["pv_anteil_val"] = st.slider(
+        "PV-Anteil am Ladestrom (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=st.session_state["pv_anteil_val"],
+        step=5.0,
+        key="pv_anteil_slider",
+    )
+  with col_pv2:
+    st.session_state["pv_preis_val"] = st.number_input(
+        "PV-Strompreis / entgangene Vergütung (€/kWh)",
+        min_value=0.0,
+        value=st.session_state["pv_preis_val"],
+        step=0.01,
+        format="%.3f",
+        help=(
+            "Kosten pro selbstgenutzter kWh (z.B. Einspeisevergütung als"
+            " Opportunitätskosten)."
+        ),
+        key="pv_preis_input",
+    )
 
 st.session_state["verbrauch_ev_val"] = st.number_input(
     "E-Auto Verbrauch (kWh / 100 km)",
@@ -303,8 +341,15 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
   else:
     gefahrene_km = 0
 
-  # 2. Kosten E-Auto (Ladekosten)
-  kosten_ev = kwh * strom
+  # 2. Kosten E-Auto (Ladekosten mit PV-Mix Berechnung)
+  if st.session_state["pv_aktiv"]:
+    pv_anteil = st.session_state["pv_anteil_val"] / 100.0
+    pv_preis = st.session_state["pv_preis_val"]
+    kwh_pv = kwh * pv_anteil
+    kwh_netz = kwh * (1.0 - pv_anteil)
+    kosten_ev = (kwh_pv * pv_preis) + (kwh_netz * strom)
+  else:
+    kosten_ev = kwh * strom
 
   # 3. Kosten Verbrenner für dieselbe Strecke (Kraftstoff)
   liter_benoetigt = (gefahrene_km / 100) * v_verb
@@ -359,9 +404,16 @@ if st.button("Ersparnis berechnen", type="primary", use_container_width=True):
   st.write("")
   st.markdown("### Kostenvergleich im Detail:")
 
-  details_kategorien = [
-      "Energiekosten (Laden vs. Tanken)",
-  ]
+  if st.session_state["pv_aktiv"]:
+    energiekosten_label = (
+        f"Ladekosten-Mix ({st.session_state['pv_anteil_val']:.0f}% PV à"
+        f" {st.session_state['pv_preis_val']:.2f} €, Rest Netz à"
+        f" {strom:.2f} €)"
+    )
+  else:
+    energiekosten_label = "Energiekosten (Laden über Netz)"
+
+  details_kategorien = [energiekosten_label]
   details_kosten_ev = [f"{kosten_ev:,.2f} €".replace(",", ".")]
   details_kosten_verb = [f"{kosten_verbrenner:,.2f} €".replace(",", ".")]
 
