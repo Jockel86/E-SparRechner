@@ -189,14 +189,13 @@ with col_btn2:
     st.success(f"Historischer Schnitt übernommen: Ø {hist_preis:.2f} €/l")
     st.rerun()
 
-# Direkt mit Session State verknüpftes Eingabefeld
-st.session_state["kraftstoffpreis_val"] = st.number_input(
+# Direkte Anbindung über den gleichen Session-State-Key
+st.number_input(
     f"Ø {selected_fuel_short}-Preis (€/Liter)",
     min_value=0.0,
-    value=st.session_state["kraftstoffpreis_val"],
     step=0.01,
     format="%.2f",
-    key="kraftstoffpreis_input_field",
+    key="kraftstoffpreis_val",
     help=(
         "Wird über Buttons direkt übernommen oder kann manuell angepasst"
         " werden."
