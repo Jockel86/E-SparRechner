@@ -48,12 +48,13 @@ def get_live_fuel_price(fuel_type):
   return 1.72 if fuel_type == "Diesel" else 1.75
 
 
-# Titel
+# Titel & Autor
 st.title("⚡ E-Auto vs. Verbrenner & Amortisation")
 st.write(
     "Vergleiche deine Ladekosten flexibel und berechne, wann sich das"
     " E-Auto amortisiert."
 )
+st.caption("🛠️ Entwickelt von Jochen Vortkamp")
 
 # ==========================================
 # SESSION STATE INITIALISIERUNG
@@ -187,7 +188,6 @@ with col_btn2:
     st.success(f"Historischer Schnitt übernommen: Ø {hist_preis:.2f} €/l")
     st.rerun()
 
-# Direkte Anbindung über den gleichen Session-State-Key
 st.number_input(
     f"Ø {selected_fuel_short}-Preis (€/Liter)",
     min_value=0.0,
